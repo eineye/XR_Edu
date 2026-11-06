@@ -4,7 +4,7 @@ import { Download, Plus, ListPlus, Wifi, WifiOff } from 'lucide-react'
 import { api, download } from '../api'
 import { useAuth } from '../auth'
 import { useApi } from '../live'
-import { Async, Battery, Button, Card, DataTable, DemoBadge, Field, HealthBadge, Modal, PageHeader, useToast, type Column } from '../components/ui'
+import { Async, Battery, Button, Card, DataTable, DemoBadge, Field, HealthBadge, Modal, PageHeader, useConfirm, useToast, type Column } from '../components/ui'
 import { APP_STATUS, fmtAgo, fmtTime } from '../format'
 
 const HEALTH_OPTS = [
@@ -15,6 +15,7 @@ export default function Devices() {
   const nav = useNavigate()
   const { can } = useAuth()
   const toast = useToast()
+  const confirm = useConfirm()
   const [sp, setSp] = useSearchParams()
   const health = sp.get('health') ?? ''
   const st = useApi<any>('/api/v1/devices', { health })
@@ -62,6 +63,13 @@ export default function Devices() {
           <Button size="sm" icon={<WifiOff className="size-3.5" />} onClick={() => demoNet(true)}>HMD-03·07·12 단절</Button>
           <Button size="sm" variant="success" icon={<Wifi className="size-3.5" />} disabled={!demo.data.offline.length} onClick={() => demoNet(false)}>전체 복구</Button>
           <span className="text-xs">장비 상세 화면에서 개별 장비도 끊을 수 있습니다.</span>
+          {demo.data.static && <>
+            <span className="text-xs">· 데이터는 이 브라우저에만 저장되며, 이 탭이 열려 있는 동안 가상 HMD가 동작합니다.</span>
+            <Button size="sm" variant="ghost" onClick={async () => {
+              if (!(await confirm({ title: '데모 데이터 초기화', message: '이 브라우저의 데모 데이터(세션·결과·설정·백업)를 지우고 처음 상태로 되돌립니다.', danger: true, confirmText: '초기화' }))) return
+              try { await api('/api/v1/demo/reset', { method: 'POST' }); location.reload() } catch (e) { toast.error(e) }
+            }}>데모 데이터 초기화</Button>
+          </>}
         </div>
       )}
       <Card>

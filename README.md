@@ -144,6 +144,21 @@ python simulator/hmd_simulator.py --key "$KEY" --devices 20
 - [장비 관리]와 장비 상세 화면의 **[데모] Wi-Fi 단절/복구** 버튼으로 단절·복구를 시험할 수 있습니다.
 - 새 세션을 만들어 시작하면 가상 HMD가 그 세션의 미션을 수행합니다.
 
+### GitHub Pages 웹 데모 (서버 없이 브라우저만으로)
+주소: **https://eineye.github.io/XR_Edu/**
+
+`main`에 push하면 `.github/workflows/pages.yml`이 정적 데모를 빌드해 자동 배포합니다.
+- 실제 백엔드 대신 **브라우저 안에 들어 있는 데모 서버**(`frontend/src/mock/`)가 같은 API 응답을 흉내 냅니다.
+- 가상 HMD 20대도 브라우저 안에서 동작합니다.
+- 장비 상태 판정, ACK 기반 동기화, `event_id` 중복 방지 규칙은 실제 서버와 같게 구현했습니다.
+- 데이터는 그 브라우저의 localStorage에만 저장됩니다. 사람마다·기기마다 데이터가 따로입니다.
+- 가상 HMD는 데모 탭이 열려 있는 동안만 동작합니다.
+- CSV만 내려받을 수 있습니다. XLSX·PDF는 실제 서버에서만 지원합니다.
+- 백업은 브라우저 저장소에 최근 5개만 보관합니다.
+- 화면 흐름을 보여 주고 시연하는 용도입니다. 실제 서버·DB 검증은 위 Render/Docker 데모나 로컬 설치로 해야 합니다.
+
+직접 빌드: `cd frontend && VITE_DEMO_STATIC=1 npx vite build --outDir dist-pages` → `dist-pages/`를 아무 정적 호스팅에 올리면 됩니다.
+
 ### Render 무료 배포 (권장)
 1. https://render.com 가입 → **New + → Blueprint** → 이 GitHub 저장소 선택
 2. 저장소의 `render.yaml`대로 Docker 이미지가 빌드·배포되고 `https://mr-edu-demo-xxxx.onrender.com` 같은 주소가 생깁니다.

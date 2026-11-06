@@ -1,6 +1,6 @@
 // 실시간 상태 갱신: WebSocket 우선, 끊기면 REST polling 으로 대체하고 재연결 시도
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { api, ApiError, wsUrl } from './api'
+import { api, ApiError, STATIC_DEMO, wsUrl } from './api'
 import { useAuth } from './auth'
 
 export interface LiveEvent {
@@ -79,9 +79,24 @@ export function LiveProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  // 정적 웹 데모: WebSocket 대신 브라우저 내장 데모 서버의 이벤트를 구독
+  useEffect(() => {
+    if (!STATIC_DEMO || !user) return
+    let off: (() => void) | undefined
+    import('./mock/server').then((m) => {
+      setWs(true)
+      off = m.bus.on((ev) => {
+        if (ev.type !== 'device.heartbeat') setEvents((list) => [ev, ...list].slice(0, 50))
+        setLastEvent(ev)
+        throttledBump()
+      })
+    })
+    return () => off?.()
+  }, [user, throttledBump])
+
   // WebSocket
   useEffect(() => {
-    if (!user) return
+    if (!user || STATIC_DEMO) return
     let ws: WebSocket | null = null
     let retry = 1000
     let timer: number | undefined
