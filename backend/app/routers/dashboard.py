@@ -47,7 +47,7 @@ def summary(user: dict = Depends(any_user), conn: sqlite3.Connection = Depends(g
 
     alerts = []
     for d in devices:
-        if d["health"] in ("warning", "offline", "error"):
+        if d["health"] in ("warning", "offline", "error") or (d["health"] == "unknown" and d.get("assignment")):
             alerts.append({"level": d["health"], "device_id": d["device_id"],
                            "message": " / ".join(d["health_reasons"]), "at": d.get("last_seen_at")})
     for e in conn.execute(
@@ -57,7 +57,7 @@ def summary(user: dict = Depends(any_user), conn: sqlite3.Connection = Depends(g
     for r in conn.execute("SELECT device_id, reason, received_at FROM result_rejections ORDER BY id DESC LIMIT 5").fetchall():
         alerts.append({"level": "warning", "device_id": r["device_id"], "message": f"결과 거부: {r['reason']}",
                        "at": r["received_at"]})
-    order = {"error": 0, "offline": 1, "warning": 2}
+    order = {"error": 0, "offline": 1, "unknown": 1, "warning": 2}
     alerts.sort(key=lambda a: (order.get(a["level"], 3), a["at"] or ""), reverse=False)
 
     recent = conn.execute(

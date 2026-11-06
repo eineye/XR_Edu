@@ -13,3 +13,4 @@ simulator/data/
 *.db-shm
 .env
 wheels/
+*.tsbuildinfo

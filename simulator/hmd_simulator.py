@@ -166,6 +166,10 @@ class VirtualHMD:
             self.log(f"[{self.device_id}] heartbeat 거부 {r.status_code}: {r.text[:120]}")
             return False
         j = r.json()
+        if self.backoff > 0:
+            # 연결 복구 감지: 재시도 대기(백오프)를 기다리지 않고 즉시 미전송분 재전송
+            self.log(f"[{self.device_id}] 서버 연결 복구 → 미전송 결과 즉시 재전송")
+            self.backoff, self.next_sync_at = 0.0, 0.0
         self.interval = j.get("heartbeat_interval_sec", self.interval)
         sync = j.get("sync", {})
         self.batch_size = sync.get("batch_size", self.batch_size)

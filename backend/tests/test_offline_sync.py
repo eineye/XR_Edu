@@ -104,3 +104,20 @@ def test_full_content_flow(client, setup_session, tmp_path):
     p = client.get(f"/api/v1/sessions/{setup_session['id']}/progress").json()
     item = next(i for i in p["items"] if i["device_id"] == dev)
     assert item["live_state"] == "completed" and item["result_count"] == 4 and item["upload_state"] == "synced"
+
+
+def test_reconnect_resets_backoff(client, setup_session, tmp_path):
+    """장시간 단절로 백오프가 최대치까지 늘어도, 연결 복구(heartbeat 성공) 즉시 재전송한다."""
+    dev = setup_session["participants"][4]["device_id"]
+    hmd, store, offline = _hmd(client, tmp_path, dev)
+    hmd.retry_base, hmd.retry_max = 5, 300
+    hmd.refresh_assignment()
+    offline.add(dev)
+    hmd.record_result("M1", True, "2026-11-06T10:00:00+09:00")
+    for _ in range(10):
+        hmd.sync(force=True)
+    assert hmd.backoff == 300
+    offline.clear()
+    assert hmd.sync()["accepted"] == 0       # 아직 백오프 대기 중
+    assert hmd.heartbeat()                    # 연결 복구 감지
+    assert hmd.sync()["accepted"] == 1
