@@ -67,6 +67,9 @@ def load_config() -> AppConfig:
     for env, (attr, typ) in env_map.items():
         if env in os.environ:
             setattr(cfg, attr, typ(os.environ[env]))
+    # 클라우드 호스팅(Render 등)이 지정하는 PORT 지원
+    if "PORT" in os.environ and "MR_EDU_PORT" not in os.environ:
+        cfg.port = int(os.environ["PORT"])
     if os.environ.get("MR_EDU_CORS_ORIGINS"):
         cfg.cors_origins = [o.strip() for o in os.environ["MR_EDU_CORS_ORIGINS"].split(",") if o.strip()]
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { ArrowLeft, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import { api } from '../api'
 import { useAuth } from '../auth'
 import { useApi } from '../live'
@@ -27,6 +27,15 @@ function Detail({ d, reload }: { d: any; reload: () => void }) {
   const [edit, setEdit] = useState({ device_name: d.device_name ?? '', model: d.model, notes: d.notes ?? '' })
   useEffect(() => setEdit({ device_name: d.device_name ?? '', model: d.model, notes: d.notes ?? '' }), [d.device_id]) // eslint-disable-line
   const editable = can('admin', 'operator')
+  const demo = useApi<any>('/api/v1/demo/status')
+  const demoOffline = demo.data?.offline?.includes(d.device_id)
+  const toggleNet = async () => {
+    try {
+      await api('/api/v1/demo/network', { method: 'POST', body: { device_ids: [d.device_id], offline: !demoOffline } })
+      toast.info(demoOffline ? `${d.device_id} Wi-Fi 복구 — 다음 heartbeat 때 미전송 결과가 재전송됩니다` : `${d.device_id} Wi-Fi 단절 — 교육은 계속되고 결과는 HMD에 쌓입니다`)
+      demo.reload()
+    } catch (e) { toast.error(e) }
+  }
 
   const save = async () => {
     try { await api(`/api/v1/devices/${d.device_id}`, { method: 'PATCH', body: edit }); toast.success('저장했습니다'); reload() } catch (e) { toast.error(e) }
@@ -49,6 +58,11 @@ function Detail({ d, reload }: { d: any; reload: () => void }) {
       <PageHeader title={`${d.device_id}${d.device_name ? ` · ${d.device_name}` : ''}`}
         desc={<span className="inline-flex flex-wrap items-center gap-2"><HealthBadge health={d.health} />{d.health_reasons.join(' / ')}{d.is_simulated ? <DemoBadge label="가상 HMD" /> : null}</span>}
         actions={editable && <>
+          {demo.data?.enabled && d.is_simulated ? (
+            <Button variant={demoOffline ? 'success' : 'secondary'} icon={demoOffline ? <Wifi className="size-4" /> : <WifiOff className="size-4" />} onClick={toggleNet}>
+              {demoOffline ? '[데모] Wi-Fi 복구' : '[데모] Wi-Fi 단절'}
+            </Button>
+          ) : null}
           <Button icon={<RefreshCw className="size-4" />} onClick={resync}>미전송 결과 재전송 요청</Button>
           <Button variant={d.active ? 'danger' : 'success'} onClick={toggleActive}>{d.active ? '비활성화' : '활성화'}</Button>
         </>} />

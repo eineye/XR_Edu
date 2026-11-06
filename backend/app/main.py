@@ -19,6 +19,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
 from . import backup as bk
+from . import demo_runner
 from .config import config
 from .db import db_session, get_settings, init_db
 from .realtime import manager
@@ -89,7 +90,9 @@ async def lifespan(app: FastAPI):
     tasks = [asyncio.create_task(_loop(monitor_devices_once, 5, {})),
              asyncio.create_task(_loop(maintenance_once, 600))]
     log.info("MR EDU MOBILE 2.0 서버 시작 (DB: %s)", config.db_file)
+    demo_runner.start()
     yield
+    demo_runner.stop()
     for t in tasks:
         t.cancel()
 
@@ -136,11 +139,13 @@ def health():
     except Exception:  # noqa: BLE001
         db_ok = False
     return JSONResponse({"status": "ok" if db_ok else "degraded", "db": "ok" if db_ok else "error",
-                         "version": __version__, "server_time": now_iso()}, status_code=200 if db_ok else 503)
+                         "version": __version__, "server_time": now_iso(),
+                         "demo": demo_runner.ENABLED}, status_code=200 if db_ok else 503)
 
 
 for r in (auth, users, devices, sessions, sync, results, contents, dashboard, reports, settings, logs):
     app.include_router(r.router)
+app.include_router(demo_runner.router)
 
 
 @app.websocket("/ws")

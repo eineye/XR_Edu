@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../api'
 import { useAuth } from '../auth'
 import { useLive } from '../live'
 import { Button } from '../components/ui'
@@ -11,6 +12,8 @@ export default function Login() {
   const [p, setP] = useState('')
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [demo, setDemo] = useState(false)
+  useEffect(() => { api('/health').then((r) => setDemo(!!r.demo)).catch(() => {}) }, [])
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setErr('')
@@ -37,6 +40,12 @@ export default function Login() {
         <input id="u" className="input mb-3" value={u} onChange={(e) => setU(e.target.value)} autoComplete="username" autoFocus required />
         <label className="label" htmlFor="p">비밀번호</label>
         <input id="p" type="password" className="input mb-4" value={p} onChange={(e) => setP(e.target.value)} autoComplete="current-password" required />
+        {demo && (
+          <div className="mb-3 rounded border border-violet-300 bg-violet-50 p-2 text-sm text-violet-900">
+            <b>웹 데모 모드</b> · 가상 HMD 20대가 실행 중입니다.<br />데모 계정: <span className="font-mono">admin / admin1234</span>
+            <button type="button" className="ml-2 underline" onClick={() => { setU('admin'); setP('admin1234') }}>자동 입력</button>
+          </div>
+        )}
         {err && <p role="alert" className="mb-3 text-sm text-red-700">{err}</p>}
         <Button type="submit" variant="primary" className="w-full" loading={busy}>로그인</Button>
         <p className="mt-4 text-center text-xs text-slate-500">인터넷 연결 없이 로컬 네트워크에서 동작합니다</p>

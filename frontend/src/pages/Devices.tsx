@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Download, Plus, ListPlus } from 'lucide-react'
+import { Download, Plus, ListPlus, Wifi, WifiOff } from 'lucide-react'
 import { api, download } from '../api'
 import { useAuth } from '../auth'
 import { useApi } from '../live'
@@ -22,6 +22,15 @@ export default function Devices() {
   const [openNew, setOpenNew] = useState(false)
   const [openBulk, setOpenBulk] = useState(false)
   const threshold = settings.data?.values?.battery_warning_pct ?? 20
+  const demo = useApi<any>('/api/v1/demo/status')
+  const demoNet = async (offline: boolean) => {
+    const ids = ['HMD-03', 'HMD-07', 'HMD-12']
+    try {
+      await api('/api/v1/demo/network', { method: 'POST', body: { device_ids: offline ? ids : demo.data.offline, offline } })
+      toast.info(offline ? `${ids.join(', ')} Wi-Fi 단절 (오프라인 판정까지 설정된 시간이 걸립니다)` : 'Wi-Fi 복구 — 미전송 결과가 자동 재전송됩니다')
+      demo.reload()
+    } catch (e) { toast.error(e) }
+  }
 
   const columns: Column<any>[] = [
     { key: 'device_id', label: 'ID', render: (d) => <span className="font-semibold">{d.device_id}{d.is_simulated ? <span className="ml-1 text-[10px] text-violet-700">가상</span> : null}</span> },
@@ -46,6 +55,15 @@ export default function Devices() {
             <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setOpenNew(true)}>장비 등록</Button>
           </>}
         </>} />
+      {demo.data?.enabled && can('admin', 'operator') && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-violet-300 bg-violet-50 px-3 py-2 text-sm text-violet-900">
+          <DemoBadge label="웹 데모" />
+          Wi-Fi 단절·복구 시험: 현재 단절 {demo.data.offline.length ? demo.data.offline.join(', ') : '없음'}
+          <Button size="sm" icon={<WifiOff className="size-3.5" />} onClick={() => demoNet(true)}>HMD-03·07·12 단절</Button>
+          <Button size="sm" variant="success" icon={<Wifi className="size-3.5" />} disabled={!demo.data.offline.length} onClick={() => demoNet(false)}>전체 복구</Button>
+          <span className="text-xs">장비 상세 화면에서 개별 장비도 끊을 수 있습니다.</span>
+        </div>
+      )}
       <Card>
         <Async state={st}>
           {(d) => (
