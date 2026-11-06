@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+node_modules/
+frontend/dist/
+backend/data/
+backend/config.json
+simulator/data/
+*.db
+*.db-wal
+*.db-shm
+.env
+wheels/
+*.tsbuildinfo
