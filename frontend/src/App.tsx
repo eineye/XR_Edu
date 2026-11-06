@@ -1,4 +1,5 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Route, Routes } from 'react-router-dom'
+import { STATIC_DEMO } from './api'
 import { AuthProvider, useAuth } from './auth'
 import { LiveProvider } from './live'
 import { ConfirmProvider, Forbidden, Loading, ToastProvider } from './components/ui'
@@ -44,9 +45,12 @@ function Gate() {
   )
 }
 
+// 정적 호스팅(GitHub Pages)은 새로고침 시 하위 경로를 찾지 못하므로 # 주소 방식 사용
+const Router = STATIC_DEMO ? HashRouter : BrowserRouter
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <ToastProvider>
         <ConfirmProvider>
           <AuthProvider>
@@ -56,6 +60,6 @@ export default function App() {
           </AuthProvider>
         </ConfirmProvider>
       </ToastProvider>
-    </BrowserRouter>
+    </Router>
   )
 }

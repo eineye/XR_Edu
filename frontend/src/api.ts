@@ -1,5 +1,8 @@
 // 관리자 API 클라이언트. 토큰은 sessionStorage 에 보관(브라우저 종료 시 로그아웃).
 export const API_BASE: string = (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
+/** GitHub Pages 등 정적 웹 데모 빌드 (서버 없이 브라우저 내장 데모 서버 사용) */
+export const STATIC_DEMO = import.meta.env.VITE_DEMO_STATIC === '1'
+const mock = () => import('./mock/server')
 
 export class ApiError extends Error {
   status: number
@@ -37,6 +40,15 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
     const s = qs.toString()
     if (s) url += (url.includes('?') ? '&' : '?') + s
   }
+  if (STATIC_DEMO) {
+    const m = await mock()
+    try {
+      return (await m.handle(opts.method ?? 'GET', url, opts.body)) as T
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401 && path !== '/api/v1/auth/login') onUnauthorized?.()
+      throw e
+    }
+  }
   const headers: Record<string, string> = {}
   const token = tokenStore.get()
   if (token) headers.Authorization = `Bearer ${token}`
@@ -61,6 +73,7 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
 export async function download(path: string, query: Record<string, unknown>, fallbackName: string) {
   const qs = new URLSearchParams()
   for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== '') qs.set(k, String(v))
+  if (STATIC_DEMO) return downloadStatic(path, query, fallbackName)
   const res = await fetch(`${API_BASE}${path}${qs.toString() ? '?' + qs : ''}`, {
     headers: { Authorization: `Bearer ${tokenStore.get() ?? ''}` },
   }).catch(() => {
@@ -86,4 +99,27 @@ export async function download(path: string, query: Record<string, unknown>, fal
 export function wsUrl(): string {
   const base = API_BASE || window.location.origin
   return base.replace(/^http/, 'ws') + `/ws?token=${encodeURIComponent(tokenStore.get() ?? '')}`
+}
+
+/** 정적 웹 데모: CSV 는 브라우저에서 생성, XLSX·PDF 는 실제 서버에서만 지원 */
+async function downloadStatic(path: string, query: Record<string, unknown>, fallbackName: string) {
+  const fmt = path.endsWith('.csv') ? 'csv' : String(query.format ?? 'csv')
+  if (fmt !== 'csv') throw new ApiError(400, `웹 데모에서는 CSV만 내려받을 수 있습니다. ${fmt.toUpperCase()}는 관리자 서버를 실행하면 지원됩니다.`)
+  const m = await mock()
+  const rest = Object.fromEntries(Object.entries(query).filter(([k]) => k !== 'format'))
+  let rep: any
+  if (path.endsWith('/devices/export.csv')) {
+    const d = await api<any>('/api/v1/devices')
+    rep = { title: '장비 목록', meta: [], tables: [{ title: '장비', columns: [['device_id', '장비 ID'], ['device_name', '별칭'], ['model', '모델'], ['health_label', '상태'], ['connection_status', '연결'], ['app_status', '앱 상태'], ['battery_level', '배터리(%)'], ['app_version', '앱 버전'], ['content_version', '콘텐츠 버전'], ['last_seen_at', '마지막 통신']], rows: d.items }] }
+  } else {
+    rep = await api<any>(path, { query: rest })
+  }
+  const blob = new Blob([m.reportToCsv(rep)], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = fallbackName.replace(/\.(xlsx|pdf)$/, '.csv')
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000)
 }

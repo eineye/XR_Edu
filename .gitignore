@@ -14,3 +14,4 @@ simulator/data/
 .env
 wheels/
 *.tsbuildinfo
+frontend/dist-pages/
